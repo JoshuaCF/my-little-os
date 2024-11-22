@@ -1,4 +1,5 @@
 bin/
 build/
-src/*
-!src/*.asm
+src/**
+!src/**/
+!src/**/*.asm

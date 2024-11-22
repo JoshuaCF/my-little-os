@@ -6,6 +6,6 @@ instruction_set = "x86-64"
 
 [project.opts]
 compiler = "nasm"
-compile_flags_txt = ["-Wall"]
+compile_flags_txt = ["-Wall", "-I", "src/"]
 diagnostics = true
 default_diagnostics = false
