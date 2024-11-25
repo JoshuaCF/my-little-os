@@ -57,6 +57,47 @@ _init:
 
 	.enable_end:
 
+; store memory map to 0x7004
+; number of entries will go to 0x7000
+	xor edi, edi
+	mov es, di
+	mov di, 0x7004
+	xor ebx, ebx
+	mov edx, "PAMS" ; magic number, supposed to be SMAP
+
+	.get_mem_entry:
+	mov eax, 0xE820
+	mov ecx, 24
+	int 0x15
+
+; set last value to 1 if it's zero for ACPI compatibility
+	pushf
+
+	cmp cl, 20
+	jne .end_set_zero
+	mov dword [di + 20], 0b1
+
+	.end_set_zero:
+	popf
+
+; prepare to fetch another entry
+	pushf
+	pop si
+	add di, 24 ; assume 24 bytes for simplicity, even if entry is only 20 bytes
+	cmp ebx, 0
+	je .get_mem_end
+	push si
+	popf
+	jnc .get_mem_entry
+
+	.get_mem_end:
+	mov eax, edi
+	sub eax, 0x7000
+	xor edx, edx
+	mov ebx, 24
+	div ebx
+	mov [0x7000], eax
+
 ; build and clone idt
 	call fill_idt
 	mov esi, idt_init
