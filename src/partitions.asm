@@ -40,6 +40,9 @@ iend
 	times part_entry_size db 0
 %endmacro
 
+	[bits 16]
+	section raw
+	align 1
 	def_part 0x80, 0xCF, 1, 16
 	def_part
 	def_part

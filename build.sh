@@ -3,25 +3,36 @@
 if [[ ! -e ./bin ]]; then
 	mkdir ./bin
 fi
-if [[ ! -e ./build ]]; then
-	mkdir ./build
+if [[ ! -e ./target ]]; then
+	mkdir ./target
 fi
 
 echo "Removing old image..."
-if [[ -e ./build/boot.img ]]; then
-	rm ./build/boot.img
+if [[ -e ./target/boot.img ]]; then
+	rm ./target/boot.img
 fi
-echo "Creating blank disk image of size 1MiB..."
-dd if=/dev/null of=./build/boot.img count=0 seek=2048 status=progress
+echo "Creating blank disk image of size 2G..."
+dd if=/dev/null of=./target/boot.img bs=1G count=0 seek=2 status=progress
 
-echo "Assembling source..."
+echo "Running build scripts..."
 for filename in ./src/*.asm; do
 	base="$(basename $filename .asm)"
-	nasm -I "src/" -g -wall -o "./bin/${base}" $filename
+	nasm -g -I "src/" -f "elf" -wall -o "./bin/${base}" $filename
 done
+cd src/kernel
+cargo -Z build-std=core build --release --target "i686-none-eabi.json"
+cd ../..
+cp src/kernel/target/i686-none-eabi/release/libkernel.a bin/kernel.a
+
+echo "Running linker scripts..."
+ld -T linkerscript --gc-sections
+# I use the following file to get symbols for GDB
+# Feels dodgy, but it's worked well enough so far
+ld -T linkerscript_debug --gc-sections
 
 echo "Patching disk image..."
-dd_common="of=./build/boot.img conv=notrunc status=progress"
-dd $dd_common if=./bin/partitions bs=1 seek=446
-dd $dd_common if=./bin/stage1 bs=1
-dd $dd_common if=./bin/stage2 bs=512 seek=1
+dd_common="of=./target/boot.img conv=notrunc status=progress"
+dd $dd_common if=./bin/out
+# dd $dd_common if=./bin/partitions bs=1 seek=446
+# dd $dd_common if=./bin/stage1 bs=1
+# dd $dd_common if=./bin/stage2 bs=512 seek=1

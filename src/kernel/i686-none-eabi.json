@@ -1,0 +1,35 @@
+{
+  "abi-return-struct-as-int": true,
+  "allows-weak-linkage": false,
+  "arch": "x86",
+  "archive-format": "coff",
+  "crt-objects-fallback": "false",
+  "data-layout": "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-i128:128-f64:32:64-f80:32-n8:16:32-S128",
+  "debuginfo-kind": "pdb",
+  "disable-redzone": true,
+  "dll-tls-export": false,
+  "emit-debug-gdb-scripts": false,
+  "entry-name": "efi_main",
+  "exe-suffix": ".efi",
+  "features": "-mmx,-sse,+soft-float",
+  "linker": "ld",
+  "llvm-target": "i686-unknown-none-eabi",
+  "max-atomic-width": 64,
+  "metadata": {
+    "description": "Custom target",
+    "host_tools": false,
+    "std": null,
+    "tier": 2
+  },
+  "os": "none",
+  "panic-strategy": "abort",
+  "singlethread": true,
+  "split-debuginfo": "packed",
+  "stack-probes": {
+    "kind": "call"
+  },
+  "supported-split-debuginfo": [
+    "packed"
+  ],
+  "target-pointer-width": "32"
+}

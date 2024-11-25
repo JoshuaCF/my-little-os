@@ -1,5 +1,3 @@
 bin/
-build/
-src/**
-!src/**/
-!src/**/*.asm
+target/
+src/**/*.o

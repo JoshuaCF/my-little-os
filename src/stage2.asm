@@ -1,6 +1,9 @@
 ; will be loaded into ram by stage1.asm
+	extern _kstart
+
+	section raw
+	align 1
 	[bits 16]
-	org 0x1000
 
 	jmp _init
 
@@ -128,7 +131,7 @@ _init:
 ; set up IDT
 	lidt [idtr]
 
-	sti
+	; sti
 
 	jmp seg_selector(1, 0, 0):dword _kstart
 
@@ -146,5 +149,3 @@ str_set_a20_len: equ $ - str_set_a20
 str_enable_pe:
 	db "Enabling PE", `\r\n`
 str_enable_pe_len: equ $ - str_enable_pe
-
-	%include "stage2_include/kernel.asm"

@@ -1,8 +1,7 @@
 ; sits in the MBR, sole purpose is to load stage2
-
 	[bits 16]
-	org 0x7C00
-	section .text
+	section raw
+	align 1
 
 stage2_first_sector: equ 1
 stage2_sectors: equ 8
@@ -45,6 +44,6 @@ packet:
 ; current setup allows 4KiB of stack space (WRONG!)
 ; there's an interrupt table starting at 0x0400, which shouldn't be damaged
 ; the BIOS reserves extra data up to 0x04FF, so 0x0500 is the first usable address
-; this stack allows only 2KiB
+; this stack allows only 2KiB (until we get to 32-bit mode, in which case we should be allowed to clobber this space)
 lss_data:
 	dw 0x1000, 0x0000

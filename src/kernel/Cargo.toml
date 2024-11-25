@@ -1,0 +1,28 @@
+[package]
+name = "rust-kernel"
+version = "0.1.0"
+edition = "2021"
+autobins = false
+autotests = false
+autoexamples = false
+autobenches = false
+
+[lib]
+name = "kernel"
+path = "src/lib.rs"
+test = false
+doctest = false
+bench = false
+doc = true
+proc-macro = false
+harness = false
+crate-type = ["staticlib"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[features]
+default = []
