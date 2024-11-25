@@ -20,7 +20,8 @@ for filename in ./src/*.asm; do
 	nasm -g -I "src/" -f "elf" -wall -o "./bin/${base}" $filename
 done
 cd src/kernel
-cargo -Z build-std=core build --release --target "i686-none-eabi.json"
+cargo build
+cargo build --release
 cd ../..
 cp src/kernel/target/i686-none-eabi/release/libkernel.a bin/kernel.a
 
