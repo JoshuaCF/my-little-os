@@ -1,6 +1,6 @@
 [build]
 target = "i686-none-eabi.json"
-rustflags = ["-C", "relocation-model=static"]
+rustflags = ["-C", "relocation-model=static", "--emit", "asm"]
 
 [unstable]
 build-std-features = ["compiler-builtins-mem"]
