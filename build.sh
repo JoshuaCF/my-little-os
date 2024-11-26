@@ -23,13 +23,14 @@ cd src/kernel
 cargo build
 cargo build --release
 cd ../..
+cp src/kernel/target/i686-none-eabi/debug/libkernel.a bin/kerneldbg.a
 cp src/kernel/target/i686-none-eabi/release/libkernel.a bin/kernel.a
 
 echo "Running linker scripts..."
-ld -T linkerscript --gc-sections
+ld -T linkerscript.ld --gc-sections
 # I use the following file to get symbols for GDB
 # Feels dodgy, but it's worked well enough so far
-ld -T linkerscript_debug --gc-sections
+ld -T linkerscript_debug.ld --gc-sections
 
 echo "Patching disk image..."
 dd_common="of=./target/boot.img conv=notrunc status=progress"
