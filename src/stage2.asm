@@ -14,11 +14,16 @@
 
 	[bits 16]
 
-; set up cursor
 _init:
+; set up cursor
 	mov ah, 0x01
 	mov ch, 0x00
 	mov cl, 0x0F
+	int 0x10
+
+; change vga mode to 0x02
+	mov ah, 0x00
+	mov al, 0x02
 	int 0x10
 
 ; announce stage 2
@@ -142,6 +147,12 @@ _init:
 
 ; set up GDT
 	lgdt [gdtr]
+
+; turn off cursor
+	mov ah, 0x01
+	mov ch, 0b00100000
+	mov cl, 0
+	int 0x10
 
 ; enable protected mode
 	mov bp, str_enable_pe
