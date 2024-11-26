@@ -4,11 +4,8 @@
 	align 1
 
 stage2_first_sector: equ 1
-stage2_sectors: equ 8
-stage2_location: equ 0x1000
-
-; set up a stack
-	lss sp, [lss_data]
+stage2_sectors: equ 800
+stage2_location: equ 0x9000
 
 ; zero segments
 	xor ax, ax
@@ -17,12 +14,34 @@ stage2_location: equ 0x1000
 	mov fs, ax
 	mov gs, ax
 
+; relocate to 0x500
+	mov di, 0x500
+	mov si, 0x7C00
+	mov cx, 512
+	rep movsb
+	jmp 0x0000:boot_start
+
+boot_start:
+; set up a stack
+	lss sp, [lss_data]
+
 ; set up read packet
 	mov byte [packet + 0], 0x10 ; packet size
-	mov word [packet + 2], stage2_sectors ; num sectors to read
 	mov word [packet + 4], stage2_location ; byte offset to read to
 	mov word [packet + 6], 0x0000 ; segment to read to
 	mov word [packet + 8], stage2_first_sector ; start sector of data
+
+; keep dl intact!
+	mov cx, stage2_sectors
+	.read_loop:
+	mov bx, 0x80
+	cmp bx, cx
+	jle .read_start
+	.read_remainder:
+	mov bx, cx
+
+	.read_start:
+	mov [packet + 2], bx ; num sectors to read
 
 ; read stage2 from the hdd starting at sector 1 to stage2_location
 ; could modify this later to instead read an active partition?
@@ -33,6 +52,18 @@ stage2_location: equ 0x1000
 	mov ds, bx
 	mov si, packet
 	int 0x13
+
+	mov ax, [packet + 6]
+	add ax, 0x80 * 0x20 ; just assume max sized read, if it wasn't max sized then we won't read again
+	mov word [packet + 6], ax ; segment to read to
+	mov ax, [packet + 8]
+	add ax, 0x80
+	mov word [packet + 8], ax ; start sector of data
+	sub cx, [packet + 2]
+	cmp cx, 0
+	jne .read_loop
+
+	.end_read:
 
 ; enforce CS:IP and jump to stage 2
 	jmp 0x0000:stage2_location
