@@ -7,6 +7,7 @@
 
 	jmp _init
 
+	%include "stage2_include/constants.asm"
 	%include "stage2_include/idt.asm"
 	%include "stage2_include/task.asm"
 	%include "stage2_include/gdt.asm"

@@ -1,11 +1,11 @@
+stage2_first_sector: equ 1
+stage2_sectors: equ 800
+stage2_location: equ 0x9000
+
 ; sits in the MBR, sole purpose is to load stage2
 	[bits 16]
 	section raw
 	align 1
-
-stage2_first_sector: equ 1
-stage2_sectors: equ 800
-stage2_location: equ 0x9000
 
 ; zero segments
 	xor ax, ax

@@ -1,6 +1,7 @@
 	%ifndef INC_IDT
 	%define INC_IDT
 
+	%include "stage2_include/constants.asm"
 	%include "stage2_include/gdt.asm"
 	%include "stage2_include/bios_writes.asm"
 
@@ -41,7 +42,6 @@ fill_idt:
 
 	ret
 
-idtr_addr: equ 0x00006000
 idtr: 
 	dw 0xFF ; 256 total entries allowed
 	dd idtr_addr
