@@ -1,3 +1,7 @@
+pub mod allocator;
+
+use core::fmt::Display;
+
 const MEMORY_MAP_NUM_ENTRIES: *const u32 = 0x7000 as *const u32;
 const MEMORY_MAP_START: *const MemoryEntryRaw = 0x7004 as *const MemoryEntryRaw;
 
@@ -15,19 +19,70 @@ impl MemoryEntryRaw {
 	}
 }
 
+pub enum Type {
+	Usable,
+	Reserved,
+	ACPIReclaimable,
+	ACPINonVolatile,
+	Bad,
+}
+impl TryFrom<u32> for Type {
+	type Error = ();
+	fn try_from(v: u32) -> Result<Self, Self::Error> {
+		match v {
+			1 => Ok(Self::Usable),
+			2 => Ok(Self::Reserved),
+			3 => Ok(Self::ACPIReclaimable),
+			4 => Ok(Self::ACPINonVolatile),
+			5 => Ok(Self::Bad),
+			_ => Err(()),
+		}
+	}
+}
+impl Display for Type {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		match self {
+			Self::Usable => 1,
+			Self::Reserved => 2,
+			Self::ACPIReclaimable => 3,
+			Self::ACPINonVolatile => 4,
+			Self::Bad => 5,
+		}
+		.fmt(f)
+	}
+}
+
+pub struct ExtendedAttributes {
+	pub ignore: bool,
+	pub non_volatile: bool,
+}
+impl From<u32> for ExtendedAttributes {
+	fn from(v: u32) -> Self {
+		ExtendedAttributes {
+			ignore: !((v & 0b01) > 0),
+			non_volatile: (v & 0b10) > 0,
+		}
+	}
+}
+impl Display for ExtendedAttributes {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		(u32::from(!self.ignore) | u32::from(self.non_volatile) << 1).fmt(f)
+	}
+}
+
 pub struct MemoryEntry {
 	pub base: u64,
 	pub length: u64,
-	pub region_type: u32,
-	pub extended_attr: u32,
+	pub region_type: Type,
+	pub extended_attr: ExtendedAttributes,
 }
 impl MemoryEntry {
 	fn from_raw_entry(entry: MemoryEntryRaw) -> MemoryEntry {
 		MemoryEntry {
 			base: entry.base,
 			length: entry.length,
-			region_type: entry.region_type,
-			extended_attr: entry.extended_attr,
+			region_type: entry.region_type.try_into().unwrap_or(Type::Bad),
+			extended_attr: entry.extended_attr.into(),
 		}
 	}
 }

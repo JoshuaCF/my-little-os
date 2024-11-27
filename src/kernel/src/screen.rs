@@ -1,7 +1,31 @@
+#![allow(static_mut_refs)]
+
 use core::fmt::{Result, Write};
 use core::ptr;
 
 use crate::bios::video::*;
+
+static mut GLOBAL_WRITER: ScreenWriter = ScreenWriter {
+	mode: VideoMode::EGA,
+	cur_x: 0,
+	cur_y: 0,
+	cur_style: 0x07,
+};
+
+pub struct GlobalScreen {}
+impl GlobalScreen {
+	pub unsafe fn init(mode: VideoMode) {
+		GLOBAL_WRITER = ScreenWriter::new(mode);
+	}
+	pub fn scroll(lines: usize) {
+		unsafe {
+			GLOBAL_WRITER.scroll(lines);
+		}
+	}
+	pub fn get_writer() -> &'static mut ScreenWriter {
+		unsafe { &mut GLOBAL_WRITER }
+	}
+}
 
 pub struct ScreenWriter {
 	mode: VideoMode,
@@ -10,7 +34,7 @@ pub struct ScreenWriter {
 	cur_style: u8, // TODO: Make this a struct of some kind
 }
 impl ScreenWriter {
-	pub fn new(mode: VideoMode) -> ScreenWriter {
+	fn new(mode: VideoMode) -> ScreenWriter {
 		ScreenWriter {
 			mode,
 			cur_x: 0,
@@ -19,7 +43,7 @@ impl ScreenWriter {
 		}
 	}
 
-	pub fn scroll(&mut self, lines: usize) {
+	fn scroll(&mut self, lines: usize) {
 		let addr = self.mode.get_video_addr_start();
 		let (width, height) = match self.mode {
 			VideoMode::EGA => loop {}, // TODO:

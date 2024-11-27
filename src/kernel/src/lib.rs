@@ -1,14 +1,20 @@
 #![no_std]
 
+extern crate alloc;
+
 mod bios;
 mod memory;
 mod screen;
 
 use core::fmt::Write;
 use core::panic;
+use core::str::FromStr;
+
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use bios::*;
-use memory::*;
+use memory::allocator::*;
 use screen::*;
 
 #[panic_handler]
@@ -23,23 +29,40 @@ pub extern "cdecl" fn _kstart() -> ! {
 		Ok(mode) => mode,
 		Err(_) => loop {},
 	};
-	let mut screen = ScreenWriter::new(video_mode);
-	screen.scroll(3);
+	unsafe {
+		GlobalScreen::init(video_mode);
+	}
+	GlobalScreen::scroll(3);
+	write!(GlobalScreen::get_writer(), "Initializing allocator\n").ok();
 
-	let num_entries = get_mmap_num_entries();
-	for i in 0..num_entries {
-		let cur_entry = get_mmap_entry(i);
-		match cur_entry {
-			None => (),
-			Some(v) => {
-				write!(
-					screen,
-					"Base: 0x{:<12X} Length: 0x{:<10X} Type: {:<2} Attr: {:<2}\n",
-					v.base, v.length, v.region_type, v.extended_attr
-				)
-				.ok();
-			}
+	unsafe {
+		KernelAllocator::init();
+	}
+
+	write!(GlobalScreen::get_writer(), "Allocating string\n").ok();
+	let my_string = String::from_str("HI I'M ON THE HEAP YIPPEE").unwrap();
+	write!(GlobalScreen::get_writer(), "Printing string\n").ok();
+	write!(GlobalScreen::get_writer(), "{}\n", my_string).ok();
+	write!(GlobalScreen::get_writer(), "Deallocating string\n").ok();
+	drop(my_string);
+
+	write!(GlobalScreen::get_writer(), "Creating vec\n").ok();
+	let mut my_vec: Vec<u64> = Vec::new();
+	write!(GlobalScreen::get_writer(), "Pushing nums 0-199\n").ok();
+	for i in 0..200 {
+		my_vec.push(i);
+	}
+	write!(
+		GlobalScreen::get_writer(),
+		"Consuming and checking vec contents\n"
+	)
+	.ok();
+	for (v, t) in my_vec.into_iter().zip(0..) {
+		if v != t {
+			write!(GlobalScreen::get_writer(), "Incorrect value at {}\n", t).ok();
 		}
 	}
+	write!(GlobalScreen::get_writer(), "Done!\n").ok();
+
 	loop {}
 }

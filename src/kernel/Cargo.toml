@@ -18,6 +18,8 @@ proc-macro = false
 harness = false
 crate-type = ["staticlib"]
 
+[dependencies]
+
 [profile.dev]
 panic = "abort"
 
