@@ -2,32 +2,96 @@
 
 use core::fmt::{Result, Write};
 use core::ptr;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use crate::bios::video::*;
 
-static mut GLOBAL_WRITER: ScreenWriter = ScreenWriter {
-	mode: VideoMode::EGA,
-	cur_x: 0,
-	cur_y: 0,
-	cur_style: 0x07,
-};
-
-pub struct GlobalScreen {}
+static mut GLOBAL_WRITER: GlobalScreen = GlobalScreen::uninitialized();
+pub struct GlobalScreen {
+	writer: Option<ScreenWriter>,
+	lock: AtomicBool,
+}
 impl GlobalScreen {
-	pub unsafe fn init(mode: VideoMode) {
-		GLOBAL_WRITER = ScreenWriter::new(mode);
-	}
-	pub fn scroll(lines: usize) {
-		unsafe {
-			GLOBAL_WRITER.scroll(lines);
+	const fn uninitialized() -> GlobalScreen {
+		GlobalScreen {
+			writer: None,
+			lock: AtomicBool::new(false),
 		}
 	}
-	pub fn get_writer() -> &'static mut ScreenWriter {
-		unsafe { &mut GLOBAL_WRITER }
+
+	pub unsafe fn init(mode: VideoMode) {
+		GLOBAL_WRITER = GlobalScreen {
+			writer: Some(ScreenWriter::new(mode)),
+			lock: AtomicBool::new(false),
+		}
+	}
+
+	fn get_lock() {
+		unsafe {
+			loop {
+				match GLOBAL_WRITER.lock.compare_exchange(
+					false,
+					true,
+					Ordering::AcqRel,
+					Ordering::Acquire,
+				) {
+					Ok(_) => break,
+					Err(_) => (),
+				};
+				core::hint::spin_loop();
+			}
+		}
+	}
+	fn release_lock() {
+		unsafe {
+			GLOBAL_WRITER.lock.store(false, Ordering::Release);
+		}
+	}
+
+	pub fn writer() -> GlobalScreenWriter {
+		GlobalScreenWriter {}
 	}
 }
 
-pub struct ScreenWriter {
+// Internally enforces thread-safety by locking and unlocking
+// Not of fan of implementing everything with a wrapper, do I really need the `ScreenWriter`
+// struct?
+pub struct GlobalScreenWriter {}
+impl GlobalScreenWriter {}
+impl GlobalScreenWriter {
+	pub fn scroll(&mut self, lines: usize) {
+		GlobalScreen::get_lock();
+		unsafe {
+			let writer_internal = GLOBAL_WRITER.writer.as_mut().unwrap();
+			writer_internal.scroll(lines);
+		}
+		GlobalScreen::release_lock();
+	}
+}
+impl Write for GlobalScreenWriter {
+	fn write_str(&mut self, s: &str) -> Result {
+		GlobalScreen::get_lock();
+		let res;
+		unsafe {
+			let writer_internal = GLOBAL_WRITER.writer.as_mut().unwrap();
+			res = writer_internal.write_str(s);
+		}
+		GlobalScreen::release_lock();
+		res
+	}
+	fn write_char(&mut self, c: char) -> Result {
+		GlobalScreen::get_lock();
+		let res;
+		unsafe {
+			let writer_internal = GLOBAL_WRITER.writer.as_mut().unwrap();
+			res = writer_internal.write_char(c);
+		}
+		GlobalScreen::release_lock();
+		res
+	}
+}
+
+struct ScreenWriter {
 	mode: VideoMode,
 	cur_x: usize,
 	cur_y: usize,

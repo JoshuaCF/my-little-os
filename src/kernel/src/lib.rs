@@ -8,10 +8,6 @@ mod screen;
 
 use core::fmt::Write;
 use core::panic;
-use core::str::FromStr;
-
-use alloc::string::String;
-use alloc::vec::Vec;
 
 use bios::*;
 use memory::allocator::*;
@@ -32,28 +28,13 @@ pub extern "cdecl" fn _kstart() -> ! {
 	unsafe {
 		GlobalScreen::init(video_mode);
 	}
-	GlobalScreen::scroll(3);
-	write!(GlobalScreen::get_writer(), "Initializing allocator\n").ok();
+	let mut screen = GlobalScreen::writer();
+	screen.scroll(3);
+	write!(screen, "Initializing allocator\n").ok();
 
 	unsafe {
 		KernelAllocator::init();
 	}
-
-	KernelAllocator::print_ranges();
-
-	write!(GlobalScreen::get_writer(), "Creating vec\n").ok();
-	let mut my_vec: Vec<u64> = Vec::new();
-	write!(GlobalScreen::get_writer(), "Pushing nums\n").ok();
-	for i in 0..10 {
-		my_vec.push(i);
-	}
-	KernelAllocator::print_ranges();
-
-	write!(GlobalScreen::get_writer(), "Deallocating vector\n").ok();
-	drop(my_vec);
-	KernelAllocator::print_ranges();
-
-	write!(GlobalScreen::get_writer(), "Done!\n").ok();
 
 	loop {}
 }

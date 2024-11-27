@@ -90,7 +90,7 @@ impl KernelAllocator {
 		unsafe {
 			for i in 0..RANGE_COUNT {
 				write!(
-					GlobalScreen::get_writer(),
+					GlobalScreen::writer(),
 					"{:?}\n",
 					*USABLE_RAM.offset(i as isize)
 				)
