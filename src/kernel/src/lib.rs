@@ -39,29 +39,20 @@ pub extern "cdecl" fn _kstart() -> ! {
 		KernelAllocator::init();
 	}
 
-	write!(GlobalScreen::get_writer(), "Allocating string\n").ok();
-	let my_string = String::from_str("HI I'M ON THE HEAP YIPPEE").unwrap();
-	write!(GlobalScreen::get_writer(), "Printing string\n").ok();
-	write!(GlobalScreen::get_writer(), "{}\n", my_string).ok();
-	write!(GlobalScreen::get_writer(), "Deallocating string\n").ok();
-	drop(my_string);
+	KernelAllocator::print_ranges();
 
 	write!(GlobalScreen::get_writer(), "Creating vec\n").ok();
 	let mut my_vec: Vec<u64> = Vec::new();
-	write!(GlobalScreen::get_writer(), "Pushing nums 0-199\n").ok();
-	for i in 0..200 {
+	write!(GlobalScreen::get_writer(), "Pushing nums\n").ok();
+	for i in 0..10 {
 		my_vec.push(i);
 	}
-	write!(
-		GlobalScreen::get_writer(),
-		"Consuming and checking vec contents\n"
-	)
-	.ok();
-	for (v, t) in my_vec.into_iter().zip(0..) {
-		if v != t {
-			write!(GlobalScreen::get_writer(), "Incorrect value at {}\n", t).ok();
-		}
-	}
+	KernelAllocator::print_ranges();
+
+	write!(GlobalScreen::get_writer(), "Deallocating vector\n").ok();
+	drop(my_vec);
+	KernelAllocator::print_ranges();
+
 	write!(GlobalScreen::get_writer(), "Done!\n").ok();
 
 	loop {}

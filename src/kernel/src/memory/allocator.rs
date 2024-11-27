@@ -63,7 +63,7 @@ impl KernelAllocator {
 							// Target start capacity is 64
 							// If we can't support that, just skip the tiny range
 							// Suboptimal, but easy
-							let required_bytes = round_to_align(64 * core::mem::size_of::<Range>());
+							let required_bytes = round_to_align(2 * core::mem::size_of::<Range>());
 							if v.length < required_bytes as u64 {
 								continue;
 							}
@@ -73,7 +73,7 @@ impl KernelAllocator {
 							new_range.base += required_bytes as u64;
 							new_range.length -= required_bytes as u64;
 
-							RANGE_CAPACITY = 64;
+							RANGE_CAPACITY = 2;
 						}
 
 						if RANGE_CAPACITY != 0 {
@@ -86,8 +86,44 @@ impl KernelAllocator {
 		}
 	}
 
-	fn realloc_ranges(capacity: usize) {}
-	fn cleanup_ranges() {}
+	pub fn print_ranges() {
+		unsafe {
+			for i in 0..RANGE_COUNT {
+				write!(
+					GlobalScreen::get_writer(),
+					"{:?}\n",
+					*USABLE_RAM.offset(i as isize)
+				)
+				.ok();
+			}
+		}
+	}
+
+	// Function is only ever called inside a dealloc, after a lock has been obtained
+	// This means it should be safe to do unchecked allocations
+	unsafe fn realloc_ranges(&self) {
+		// TODO: Perform a range merge before reallocating
+		let old_cap = RANGE_CAPACITY;
+		let old_ram = USABLE_RAM;
+		RANGE_CAPACITY *= 2;
+		let layout = Layout::array::<Range>(RANGE_CAPACITY).unwrap();
+		let dest: *mut Range = self.alloc_unchecked(layout) as *mut Range;
+
+		for index in 0..RANGE_COUNT {
+			*(dest.offset(index as isize)) = ptr::read(USABLE_RAM.offset(index as isize));
+		}
+
+		USABLE_RAM = dest;
+		self.dealloc_unchecked(old_ram as *mut u8, Layout::array::<Range>(old_cap).unwrap());
+	}
+	unsafe fn remove_range(index: usize) {
+		RANGE_COUNT -= 1;
+		if index == RANGE_COUNT {
+			return;
+		}
+
+		*USABLE_RAM.offset(index as isize) = ptr::read(USABLE_RAM.offset(RANGE_COUNT as isize));
+	}
 
 	fn get_lock() {
 		// I have no idea if this works, I've never used atomics
@@ -102,11 +138,9 @@ impl KernelAllocator {
 	fn release_lock() {
 		LOCK.store(false, Ordering::Release);
 	}
-}
-unsafe impl GlobalAlloc for KernelAllocator {
-	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		KernelAllocator::get_lock();
 
+	// Not thread safe! Ensure that a lock is obtained before using these
+	unsafe fn alloc_unchecked(&self, layout: Layout) -> *mut u8 {
 		let mut ret_ptr = ptr::null_mut();
 		let size = round_to_align(layout.size());
 
@@ -122,18 +156,17 @@ unsafe impl GlobalAlloc for KernelAllocator {
 					ret_ptr = cur_range.base as *mut u8;
 					cur_range.base += size as u64;
 					cur_range.length -= size as u64;
-					KernelAllocator::cleanup_ranges();
+					if cur_range.length == 0 {
+						KernelAllocator::remove_range(i);
+					}
 					break;
 				}
 			}
 		}
 
-		KernelAllocator::release_lock();
 		ret_ptr
 	}
-	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		KernelAllocator::get_lock();
-
+	unsafe fn dealloc_unchecked(&self, ptr: *mut u8, layout: Layout) {
 		let base = ptr as u64;
 		let size = round_to_align(layout.size());
 		let freed_range = Range {
@@ -153,16 +186,26 @@ unsafe impl GlobalAlloc for KernelAllocator {
 		}
 
 		if !merge_success {
-			// Realloc ranges if at capacity
-			if RANGE_CAPACITY == RANGE_COUNT {
-				KernelAllocator::realloc_ranges(RANGE_CAPACITY * 3);
-			}
-
 			// Append the range
 			*USABLE_RAM.offset(RANGE_COUNT as isize) = freed_range;
 			RANGE_COUNT += 1;
 		}
-
+	}
+}
+unsafe impl GlobalAlloc for KernelAllocator {
+	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+		KernelAllocator::get_lock();
+		let ptr = self.alloc_unchecked(layout);
+		KernelAllocator::release_lock();
+		ptr
+	}
+	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+		KernelAllocator::get_lock();
+		// Allocate more room for ranges if at capacity
+		if RANGE_CAPACITY == RANGE_COUNT {
+			self.realloc_ranges();
+		}
+		self.dealloc_unchecked(ptr, layout);
 		KernelAllocator::release_lock();
 	}
 }

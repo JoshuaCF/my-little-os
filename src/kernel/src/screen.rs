@@ -52,13 +52,16 @@ impl ScreenWriter {
 			VideoMode::Mono80x25 => (80, 25),
 		};
 
-		let byte_size = width * height * 2;
+		let screen_size_bytes = width * height * 2;
 		let bytes_ignored = lines * width * 2;
 
 		unsafe {
-			for dst_offset in 0..(byte_size - bytes_ignored) {
+			for dst_offset in 0..(screen_size_bytes - bytes_ignored) {
 				let src_offset = dst_offset + bytes_ignored;
 				ptr::write_volatile(&mut (*addr)[dst_offset], (*addr)[src_offset]);
+			}
+			for dst_offset in (screen_size_bytes - bytes_ignored)..screen_size_bytes {
+				ptr::write_volatile(&mut (*addr)[dst_offset], 0x00);
 			}
 		}
 	}
