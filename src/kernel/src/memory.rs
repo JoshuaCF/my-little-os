@@ -1,6 +1,7 @@
 pub mod allocator;
 
 use core::fmt::Display;
+use core::ptr;
 
 const MEMORY_MAP_NUM_ENTRIES: *const u32 = 0x7000 as *const u32;
 const MEMORY_MAP_START: *const MemoryEntryRaw = 0x7004 as *const MemoryEntryRaw;
@@ -15,7 +16,8 @@ struct MemoryEntryRaw {
 }
 impl MemoryEntryRaw {
 	unsafe fn from_raw_ptr(entry: *const MemoryEntryRaw) -> MemoryEntryRaw {
-		*entry
+		// The pointer does not need to be aligned, so the previous implementation was UB
+		ptr::read_unaligned(entry)
 	}
 }
 
